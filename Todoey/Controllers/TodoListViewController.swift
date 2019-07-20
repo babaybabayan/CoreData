@@ -7,21 +7,25 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
     
-    var itemArr: [String] = []
-    let `default` = UserDefaults.standard
+    var itemArr: [Item] = [Item]()
+    let keyTodo = "TodoeyList"
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-        tableView.delegate = self
-        tableView.dataSource = self
-       
-        if let items = `default`.array(forKey: "TodoeyList") as? [String] {
-            itemArr = items
-        }
+        
+        loadData()
+
+//        tableView.delegate = self
+//        tableView.dataSource = self
+        
+//        if let items = defaults.array(forKey: keyTodo) as? [Items] {
+//            itemArr = items
+//        }
         
     }
     
@@ -30,20 +34,21 @@ class TodoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
         let cell = tableView.dequeueReusableCell(withIdentifier: "todoListCell", for: indexPath)
         
-        cell.textLabel?.text = itemArr[indexPath.row]
+        cell.textLabel?.text = itemArr[indexPath.row].title
+        
+        cell.accessoryType = itemArr[indexPath.row].isDone ? .checkmark : .none
         
         return cell
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }else{
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        itemArr[indexPath.row].isDone = !itemArr[indexPath.row].isDone
+        
+        saveData()
         
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -55,10 +60,17 @@ class TodoListViewController: UITableViewController {
         var textField = UITextField()
         
         let alert = UIAlertController(title: "add new todoey item", message: "", preferredStyle: .alert)
+        
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            self.itemArr.append(textField.text!)
-            self.`default`.setValue(self.itemArr, forKey: "TodoeyList")
-            self.tableView.reloadData()
+            
+            let newItem = Item(context: context)
+            newItem.title = textField.text!
+            newItem.isDone = false
+            self.itemArr.append(newItem)
+            
+            self.saveData()
+            
+//            self.defaults.set(self.itemArr, forKey: self.keyTodo)
         }
         
         alert.addTextField { (UITextField) in
@@ -69,6 +81,26 @@ class TodoListViewController: UITableViewController {
         alert.addAction(action)
         
         present(alert, animated: true, completion: nil)
+    }
+    
+    func saveData() {
+
+        do {
+            try context.save()
+        }catch let error{
+            print("Error Saving Data \(error)")
+        }
+        tableView.reloadData()
+    }
+    
+    func loadData() {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        do {
+            itemArr = try context.fetch(request)
+        } catch {
+            print("Error Load Data \(error)")
+        }
+        
     }
     
 }
