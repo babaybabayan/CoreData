@@ -28,7 +28,7 @@ class TodoListViewController: UITableViewController {
 //        }
         
     }
-    
+    // MARK: - tableview methods
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArr.count
     }
@@ -46,6 +46,9 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
+//        context.delete(itemArr[indexPath.row])
+//        itemArr.remove(at: indexPath.row)
+        
         itemArr[indexPath.row].isDone = !itemArr[indexPath.row].isDone
         
         saveData()
@@ -54,7 +57,7 @@ class TodoListViewController: UITableViewController {
     }
     
     
-    
+    // MARK: - controller data
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
@@ -62,6 +65,17 @@ class TodoListViewController: UITableViewController {
         let alert = UIAlertController(title: "add new todoey item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            
+            if textField.text == "" {
+                let str = "textfield is empty"
+                let disAlert = UIAlertController(title: str, message: str, preferredStyle: .alert)
+                let disAction = UIAlertAction(title: "Ok", style: .cancel, handler: { (_) in
+                    self.present(alert, animated: true, completion: nil)
+                })
+                disAlert.addAction(disAction)
+                self.present(disAlert, animated: true, completion: nil)
+                return
+            }
             
             let newItem = Item(context: context)
             newItem.title = textField.text!
@@ -93,15 +107,48 @@ class TodoListViewController: UITableViewController {
         tableView.reloadData()
     }
     
-    func loadData() {
-        let request: NSFetchRequest<Item> = Item.fetchRequest()
+    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+        
         do {
             itemArr = try context.fetch(request)
         } catch {
             print("Error Load Data \(error)")
         }
         
+        tableView.reloadData()
+        
     }
+    
+    
+    
+}
+
+// MARK: - searchbar methods
+extension TodoListViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        loadData(with: request)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            
+            loadData()
+            
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+            
+        }
+    }
+    
     
 }
 
