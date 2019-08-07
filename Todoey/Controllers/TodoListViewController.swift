@@ -12,20 +12,15 @@ import CoreData
 class TodoListViewController: UITableViewController {
     
     var itemArr: [Item] = [Item]()
-    let keyTodo = "TodoeyList"
+    var selectedCategory: Category? {
+        didSet {
+            loadData()
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-        
-        loadData()
-
-//        tableView.delegate = self
-//        tableView.dataSource = self
-        
-//        if let items = defaults.array(forKey: keyTodo) as? [Items] {
-//            itemArr = items
-//        }
         
     }
     // MARK: - tableview methods
@@ -80,6 +75,7 @@ class TodoListViewController: UITableViewController {
             let newItem = Item(context: context)
             newItem.title = textField.text!
             newItem.isDone = false
+            newItem.parentCategory = self.selectedCategory
             self.itemArr.append(newItem)
             
             self.saveData()
@@ -107,20 +103,23 @@ class TodoListViewController: UITableViewController {
         tableView.reloadData()
     }
     
-    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        }else{
+            request.predicate = categoryPredicate
+        }
         
         do {
             itemArr = try context.fetch(request)
         } catch {
             print("Error Load Data \(error)")
         }
-        
         tableView.reloadData()
-        
     }
-    
-    
-    
 }
 
 // MARK: - searchbar methods
@@ -130,11 +129,11 @@ extension TodoListViewController: UISearchBarDelegate {
         
         let request: NSFetchRequest<Item> = Item.fetchRequest()
         
-        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
         
         request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
         
-        loadData(with: request)
+        loadData(with: request, predicate: predicate)
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -145,10 +144,7 @@ extension TodoListViewController: UISearchBarDelegate {
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
-            
         }
     }
-    
-    
 }
 
